@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>小岚</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --paper: rgba(18, 22, 27, .72);
+      --paper-strong: rgba(15, 18, 23, .88);
+      --line: rgba(255, 255, 255, .16);
+      --ink: #fbf8f4;
+      --muted: #c4c6c7;
+      --rose: #f28c8b;
+      --rose-bright: #ffaaa6;
+      --user: rgba(210, 99, 103, .88);
+      --shadow: 0 26px 80px rgba(0, 0, 0, .42);
+    }
+    * { box-sizing: border-box; }
+    html { background: #111318; }
+    body {
+      position: relative; isolation: isolate; min-height: 100vh; margin: 0; overflow-x: hidden; color: var(--ink);
+      font-family: "Microsoft YaHei", "Noto Sans SC", sans-serif;
+      background: #111318;
+    }
+    body::before {
+      position: fixed; z-index: 0; inset: -36px;
+      content: ""; background: url("/assets/xiaolan.jpg") center / cover no-repeat;
+      filter: blur(28px) brightness(.58) saturate(.88); pointer-events: none; transform: scale(1.08);
+    }
+    body::after {
+      position: fixed; z-index: 1; inset: 0; content: ""; pointer-events: none;
+      background: linear-gradient(rgba(8, 11, 15, .48), rgba(8, 11, 15, .48)), url("/assets/xiaolan.jpg") center / contain no-repeat;
+    }
+    .app-shell {
+      width: min(920px, calc(100% - 40px)); height: 100vh; margin: 0 auto;
+      position: relative; z-index: 2; display: flex; align-items: center; padding: 24px 0;
+    }
+    .chat-panel {
+      width: 100%; height: min(880px, calc(100vh - 48px)); min-height: 0; display: flex; flex-direction: column; overflow: hidden;
+      border: 1px solid var(--line); background: var(--paper); box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+    .chat-header {
+      position: sticky; top: 0; z-index: 3; flex: 0 0 auto;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 21px 23px 17px; border-bottom: 1px solid var(--line); background: rgba(10, 12, 16, .22);
+    }
+    .identity { display: flex; align-items: center; gap: 11px; min-width: 0; }
+    .avatar { width: 38px; height: 38px; overflow: hidden; border: 1px solid rgba(255,255,255,.3); border-radius: 50%; flex: 0 0 auto; }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 19%; }
+    .identity strong { display: block; font-size: 16px; font-weight: 600; }
+    .identity small { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .status { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #8a8e95; }
+    .dot.ready { background: #74d49a; box-shadow: 0 0 0 4px rgba(116, 212, 154, .12); }
+    .dot.busy { background: #ffd477; box-shadow: 0 0 0 4px rgba(255, 212, 119, .11); }
+    .dot.error { background: #ff8787; }
+    .conversation { flex: 1; min-height: 0; overflow-y: auto; padding: 24px 23px; scrollbar-color: rgba(255,255,255,.28) transparent; }
+    .empty { display: grid; min-height: 100%; place-items: center; text-align: center; color: var(--muted); }
+    .empty strong { display: block; color: var(--ink); font-size: 18px; font-weight: 600; }
+    .empty span { display: block; margin-top: 8px; font-size: 13px; }
+    .message { display: flex; margin: 0 0 20px; }
+    .message.user { justify-content: flex-end; }
+    .message > div { min-width: 0; max-width: 84%; }
+    .label { margin: 0 4px 6px; color: var(--muted); font-size: 12px; }
+    .user .label { text-align: right; }
+    .bubble {
+      padding: 12px 14px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.10);
+      border-radius: 7px; color: var(--ink); line-height: 1.7; white-space: pre-wrap; font-size: 15px;
+    }
+    .user .bubble { border-color: rgba(255,190,188,.34); background: var(--user); }
+    .composer { padding: 16px 18px 18px; border-top: 1px solid var(--line); background: var(--paper-strong); }
+    .chat-form { display: flex; align-items: flex-end; gap: 10px; }
+    textarea {
+      width: 100%; min-height: 50px; max-height: 132px; resize: vertical; padding: 13px 14px;
+      border: 1px solid rgba(255,255,255,.2); border-radius: 6px; outline: 0; color: var(--ink);
+      background: rgba(255,255,255,.08); font: inherit; line-height: 1.5;
+    }
+    textarea::placeholder { color: #aeb1b6; }
+    textarea:focus { border-color: rgba(255, 170, 166, .85); box-shadow: 0 0 0 3px rgba(242,140,139,.14); }
+    button { border: 0; border-radius: 6px; font: inherit; cursor: pointer; transition: background .16s ease, transform .16s ease, opacity .16s ease; }
+    button:disabled { cursor: not-allowed; opacity: .45; }
+    button:not(:disabled):hover { transform: translateY(-1px); }
+    .voice { width: 50px; min-width: 50px; min-height: 50px; padding: 0; color: var(--ink); background: rgba(255,255,255,.1); font-size: 18px; }
+    .voice:hover { background: rgba(255,255,255,.18); }
+    .voice.recording { color: #fff4f2; background: #cc6267; animation: voice-pulse 1.1s ease-in-out infinite; }
+    @keyframes voice-pulse { 50% { box-shadow: 0 0 0 6px rgba(204, 98, 103, .22); } }
+    .send { min-width: 72px; min-height: 50px; padding: 0 16px; color: #29181b; background: var(--rose-bright); font-weight: 650; }
+    .send:hover { background: #ffd0cc; }
+    .tools { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+    .tool-group { display: flex; gap: 8px; }
+    .tool-button {
+      display: inline-grid; width: 34px; height: 34px; place-items: center; padding: 0;
+      border: 1px solid rgba(255,255,255,.17); color: var(--muted); background: rgba(255,255,255,.06); font-size: 16px;
+    }
+    .tool-button:hover { color: var(--ink); background: rgba(255,255,255,.14); }
+    .clear:hover { color: #ffb7b3; }
+    .settings:hover { color: #b7dbff; }
+    .notice { min-height: 19px; margin-top: 10px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .notice.error { color: #ffb0ac; }
+    .health { max-width: 260px; overflow: hidden; color: #aeb1b6; font-size: 11px; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+    .config-dialog { width: min(760px, calc(100% - 28px)); max-height: min(810px, calc(100vh - 32px)); padding: 0; overflow: hidden; border: 1px solid rgba(255,255,255,.2); border-radius: 8px; color: var(--ink); background: #171b21; box-shadow: 0 28px 90px rgba(0,0,0,.6); }
+    .config-dialog::backdrop { background: rgba(4, 7, 10, .72); backdrop-filter: blur(7px); }
+    .config-form { display: flex; max-height: inherit; flex-direction: column; }
+    .config-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 22px 23px 17px; border-bottom: 1px solid var(--line); }
+    .config-header h2 { margin: 0; font-size: 18px; font-weight: 600; }
+    .config-header p { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .close-config { width: 32px; height: 32px; padding: 0; color: var(--muted); background: rgba(255,255,255,.08); font-size: 20px; line-height: 1; }
+    .config-body { overflow-y: auto; padding: 20px 23px 24px; }
+    .config-section + .config-section { margin-top: 27px; }
+    .config-section-title { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 14px; font-weight: 600; }
+    .config-section-title span { padding: 2px 6px; border-radius: 4px; color: #301c1f; background: #ffb8b2; font-size: 11px; font-weight: 700; }
+    .config-section.optional .config-section-title span { color: #20364e; background: #b9d9ff; }
+    .config-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .config-field { min-width: 0; }
+    .config-field.full { grid-column: 1 / -1; }
+    .config-field label { display: flex; align-items: center; gap: 7px; margin: 0 0 6px; color: var(--muted); font-size: 12px; }
+    .config-field input { width: 100%; min-width: 0; height: 41px; padding: 9px 11px; border: 1px solid rgba(255,255,255,.17); border-radius: 6px; outline: 0; color: var(--ink); background: rgba(255,255,255,.07); font: inherit; font-size: 13px; }
+    .config-field input:focus { border-color: rgba(185,217,255,.85); box-shadow: 0 0 0 3px rgba(185,217,255,.12); }
+    .configured-tag { display: inline-block; padding: 1px 5px; border-radius: 4px; color: #89d7a5; background: rgba(116,212,154,.12); font-size: 10px; }
+    .config-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 15px 23px; border-top: 1px solid var(--line); background: rgba(0,0,0,.14); }
+    .config-note { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .config-actions { display: flex; flex: 0 0 auto; gap: 8px; }
+    .secondary-button { min-height: 38px; padding: 0 13px; border: 1px solid rgba(255,255,255,.19); color: var(--ink); background: rgba(255,255,255,.08); }
+    .save-config { min-height: 38px; padding: 0 15px; color: #18212d; background: #b9d9ff; font-weight: 650; }
+    .save-config:hover { background: #d5e9ff; }
+    @media (max-width: 850px) {
+      .app-shell { width: min(680px, calc(100% - 24px)); height: 100vh; padding: 12px 0; }
+      .chat-panel { height: calc(100vh - 24px); min-height: 0; }
+    }
+    @media (max-width: 480px) {
+      .app-shell { width: calc(100% - 16px); padding: 8px 0; }
+      .chat-header, .conversation { padding-right: 16px; padding-left: 16px; }
+      .composer { padding: 13px 14px 14px; }
+      .chat-panel { height: calc(100vh - 16px); }
+      .message > div { max-width: 91%; }
+      .health { max-width: 175px; }
+      .config-grid { grid-template-columns: 1fr; }
+      .config-field.full { grid-column: auto; }
+      .config-header, .config-body, .config-footer { padding-right: 16px; padding-left: 16px; }
+      .config-footer { align-items: flex-start; flex-direction: column; }
+      .config-actions { width: 100%; }
+      .config-actions button { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <section class="chat-panel" aria-label="与小岚聊天">
+      <header class="chat-header">
+        <div class="identity"><span class="avatar"><img src="/assets/xiaolan.jpg" alt=""></span><div><strong>小岚</strong><small>陪你聊会儿</small></div></div>
+        <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">检查连接中</span></div>
+      </header>
+      <section id="conversation" class="conversation" aria-live="polite">
+        <div id="empty" class="empty"><div><strong>想和我说点什么？</strong><span>我会认真听。</span></div></div>
+      </section>
+      <section class="composer">
+        <form id="chatForm" class="chat-form">
+          <textarea id="textInput" maxlength="4000" placeholder="和小岚说句话..." aria-label="输入消息"></textarea>
+          <button id="voiceButton" class="voice" type="button" title="检查语音输入支持中" aria-label="语音输入" disabled>&#127908;</button>
+          <button id="sendButton" class="send" type="submit">发送</button>
+        </form>
+        <div class="tools">
+          <div class="tool-group">
+            <button id="stopButton" class="tool-button" type="button" title="停止播放" aria-label="停止播放" disabled>■</button>
+            <button id="resetButton" class="tool-button clear" type="button" title="清空以上对话" aria-label="清空以上对话">⌫</button>
+            <button id="settingsButton" class="tool-button settings" type="button" title="接口设置" aria-label="接口设置">⚙</button>
+          </div>
+          <span id="healthText" class="health"></span>
+        </div>
+        <div id="notice" class="notice" role="status"></div>
+      </section>
+    </section>
+  </main>
+  <dialog id="configDialog" class="config-dialog" aria-labelledby="configTitle">
+    <form id="configForm" class="config-form" method="dialog">
+      <header class="config-header">
+        <div><h2 id="configTitle">接口设置</h2><p>保存后立即应用到本地服务。已配置的密钥不会显示，留空不会覆盖原有密钥。</p></div>
+        <button id="closeConfigButton" class="close-config" type="button" aria-label="关闭设置">×</button>
+      </header>
+      <div id="configBody" class="config-body"></div>
+      <footer class="config-footer">
+        <p class="config-note">配置只保存在本机 `.env` 文件中，网页不会读取或显示已保存的 API 密钥。</p>
+        <div class="config-actions"><button id="cancelConfigButton" class="secondary-button" type="button">取消</button><button id="saveConfigButton" class="save-config" type="submit">保存并应用</button></div>
+      </footer>
+    </form>
+  </dialog>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const conversation = $("conversation"), empty = $("empty"), input = $("textInput"), notice = $("notice");
+    const send = $("sendButton"), stop = $("stopButton"), reset = $("resetButton"), settingsButton = $("settingsButton"), voiceButton = $("voiceButton");
+    const dot = $("statusDot"), status = $("statusText"), healthText = $("healthText");
+    const configDialog = $("configDialog"), configBody = $("configBody"), configForm = $("configForm"), saveConfigButton = $("saveConfigButton");
+    let currentAudio = null, busy = false, recognition = null, recognitionActive = false, finalTranscript = "";
+
+    function setStatus(text, kind = "") { status.textContent = text; dot.className = `dot ${kind}`; }
+    function setNotice(text = "", error = false) { notice.textContent = text; notice.className = `notice${error ? " error" : ""}`; }
+    function addMessage(role, text) {
+      empty.hidden = true;
+      const wrap = document.createElement("div"); wrap.className = `message ${role}`;
+      const inner = document.createElement("div");
+      const label = document.createElement("div"); label.className = "label"; label.textContent = role === "user" ? "四哥" : "小岚";
+      const bubble = document.createElement("div"); bubble.className = "bubble"; bubble.textContent = text;
+      inner.append(label, bubble); wrap.append(inner); conversation.append(wrap); wrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+    function clearMessages() { conversation.querySelectorAll(".message").forEach((node) => node.remove()); empty.hidden = false; }
+    async function restoreConversation() {
+      const response = await fetch("/api/conversation");
+      if (!response.ok) throw new Error("历史对话读取失败");
+      const data = await response.json(); clearMessages();
+      for (const message of data.messages || []) addMessage(message.role, message.content);
+      if ((data.messages || []).length) empty.hidden = true;
+    }
+    function setBusy(value) { busy = value; send.disabled = value; reset.disabled = value; input.disabled = value; voiceButton.disabled = value || !recognition; }
+    function setVoiceRecording(value) {
+      recognitionActive = value; voiceButton.classList.toggle("recording", value);
+      voiceButton.title = value ? "停止语音输入" : "语音输入";
+      voiceButton.setAttribute("aria-label", value ? "停止语音输入" : "语音输入");
+    }
+    function setupSpeechRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        voiceButton.disabled = true; voiceButton.title = "当前浏览器不支持语音输入";
+        return;
+      }
+      recognition = new SpeechRecognition(); recognition.lang = "zh-CN"; recognition.continuous = false; recognition.interimResults = true; recognition.maxAlternatives = 1;
+      recognition.onstart = () => { setVoiceRecording(true); finalTranscript = ""; setStatus("正在听", "busy"); setNotice("请说话，停顿后会自动识别并发送。"); };
+      recognition.onresult = (event) => {
+        let interim = "";
+        for (let index = event.resultIndex; index < event.results.length; index += 1) {
+          const text = event.results[index][0].transcript;
+          if (event.results[index].isFinal) finalTranscript += text; else interim += text;
+        }
+        input.value = `${finalTranscript}${interim}`.trim();
+      };
+      recognition.onerror = (event) => {
+        const messages = { "not-allowed": "未获得麦克风权限，请在浏览器中允许麦克风后重试。", "service-not-allowed": "浏览器语音输入服务不可用。", "no-speech": "没有听到语音，请再试一次。", "audio-capture": "没有找到可用的麦克风。" };
+        if (event.error !== "aborted") setNotice(messages[event.error] || "语音输入失败，请改用文字或稍后重试。", true);
+      };
+      recognition.onend = () => {
+        const text = finalTranscript.trim(); setVoiceRecording(false);
+        if (text && !busy) { setNotice("已识别，正在发送。"); sendText(text); return; }
+        if (!busy) setStatus("待机", "ready");
+      };
+      voiceButton.disabled = false;
+    }
+    function toggleVoiceInput() {
+      if (!recognition || busy) return;
+      if (recognitionActive) { recognition.stop(); return; }
+      try { recognition.start(); } catch { setNotice("语音输入正在启动，请稍等一下。", true); }
+    }
+    function renderConfig(fields) {
+      const sections = [["required", "必填", "文字聊天和语音回复必须配置"], ["optional", "选填", "默认值已经能用，语音识别暂时不参与当前链路"]];
+      configBody.replaceChildren();
+      for (const [group, title, hint] of sections) {
+        const section = document.createElement("section"); section.className = `config-section ${group}`;
+        const heading = document.createElement("h3"); heading.className = "config-section-title";
+        const badge = document.createElement("span"); badge.textContent = title; heading.append(badge, document.createTextNode(hint));
+        const grid = document.createElement("div"); grid.className = "config-grid";
+        for (const field of fields.filter((item) => item.group === group)) {
+          const item = document.createElement("div"); item.className = `config-field${field.key.endsWith("BASE_URL") ? " full" : ""}`;
+          const label = document.createElement("label"); label.htmlFor = `config-${field.key}`; label.textContent = field.label;
+          if (field.configured) { const tag = document.createElement("span"); tag.className = "configured-tag"; tag.textContent = "已配置"; label.append(tag); }
+          const control = document.createElement("input"); control.id = `config-${field.key}`; control.name = field.key; control.placeholder = field.secret && field.configured ? "已保存，留空不修改" : field.placeholder || ""; control.value = field.value || ""; control.autocomplete = "off"; control.type = field.secret ? "password" : "text";
+          item.append(label, control); grid.append(item);
+        }
+        section.append(heading, grid); configBody.append(section);
+      }
+    }
+    async function openConfig() {
+      if (busy) return;
+      settingsButton.disabled = true; setNotice("");
+      try { const response = await fetch("/api/config"); const data = await response.json(); if (!response.ok) throw new Error(data.detail || "读取设置失败"); renderConfig(data.fields || []); configDialog.showModal(); }
+      catch (error) { setNotice(error.message || "暂时无法读取接口设置。", true); }
+      finally { settingsButton.disabled = false; }
+    }
+    function playAudio(base64, mediaType) {
+      if (!base64) return Promise.resolve();
+      if (currentAudio) { currentAudio.pause(); URL.revokeObjectURL(currentAudio.src); }
+      const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+      currentAudio = new Audio(URL.createObjectURL(new Blob([bytes], { type: mediaType || "audio/mpeg" })));
+      stop.disabled = false; setStatus("播放中", "busy");
+      return new Promise((resolve) => {
+        currentAudio.onended = () => { stop.disabled = true; setStatus("待机", "ready"); resolve(); };
+        currentAudio.onerror = () => { stop.disabled = true; setStatus("待机", "ready"); setNotice("文字回复已收到，但浏览器没有成功播放语音。", true); resolve(); };
+        currentAudio.play().catch(() => { stop.disabled = true; setStatus("待机", "ready"); setNotice("文字回复已收到，但浏览器阻止了自动播放。", true); resolve(); });
+      });
+    }
+    async function sendText(text) {
+      text = text.trim(); if (!text || busy) return;
+      addMessage("user", text); input.value = ""; setBusy(true); setNotice(""); setStatus("思考中", "busy");
+      try {
+        const response = await fetch("/api/chat/text", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+        const data = await response.json(); if (!response.ok) throw new Error(data.detail || "请求失败");
+        addMessage("assistant", data.reply); await playAudio(data.audio, data.audio_media_type); if (!currentAudio || currentAudio.ended) setStatus("待机", "ready");
+      } catch (error) { setStatus("需要检查", "error"); setNotice(error.message || "请求失败，请稍后再试。", true); }
+      finally { setBusy(false); }
+    }
+    $("chatForm").addEventListener("submit", (event) => { event.preventDefault(); sendText(input.value); });
+    input.addEventListener("keydown", (event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); sendText(input.value); } });
+    voiceButton.addEventListener("click", toggleVoiceInput);
+    stop.addEventListener("click", () => { if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; setStatus("待机", "ready"); stop.disabled = true; } });
+    reset.addEventListener("click", async () => {
+      if (busy || !window.confirm("确定清空以上全部对话吗？清空后无法恢复。")) return;
+      try { const response = await fetch("/api/reset", { method: "POST" }); if (!response.ok) throw new Error(); clearMessages(); setNotice("以上对话已清空，新的聊天会从这里开始。"); setStatus("待机", "ready"); }
+      catch { setNotice("清空失败，请稍后再试。", true); }
+    });
+    settingsButton.addEventListener("click", openConfig);
+    $("closeConfigButton").addEventListener("click", () => configDialog.close());
+    $("cancelConfigButton").addEventListener("click", () => configDialog.close());
+    configForm.addEventListener("submit", async (event) => {
+      event.preventDefault(); const values = Object.fromEntries(new FormData(configForm).entries());
+      saveConfigButton.disabled = true;
+      try {
+        const response = await fetch("/api/config", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ values }) });
+        const data = await response.json(); if (!response.ok) throw new Error(data.detail || "保存失败");
+        renderConfig(data.config.fields || []); configDialog.close(); setNotice(data.restart_required?.length ? "接口设置已保存。修改服务地址或端口后，请重启服务。" : "接口设置已保存并应用。");
+        const health = await fetch("/api/health"); const healthData = await health.json(); healthText.textContent = `模型 ${healthData.llm_configured ? "已连接" : "未配置"} · 语音 ${healthData.tts_configured ? "已连接" : "未配置"}`;
+      } catch (error) { setNotice(error.message || "接口设置保存失败。", true); }
+      finally { saveConfigButton.disabled = false; }
+    });
+    window.addEventListener("load", async () => {
+      setupSpeechRecognition();
+      try { const response = await fetch("/api/health"); const data = await response.json(); await restoreConversation(); healthText.textContent = `模型 ${data.llm_configured ? "已连接" : "未配置"} · 语音 ${data.tts_configured ? "已连接" : "未配置"}`; setStatus("待机", "ready"); }
+      catch { setStatus("服务未连接", "error"); healthText.textContent = "后端未启动"; }
+    });
+  </script>
+</body>
+</html>

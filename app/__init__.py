@@ -1,0 +1,2 @@
+"""Cloud voice girlfriend prototype."""
+
