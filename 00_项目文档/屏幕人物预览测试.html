@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>小岚屏幕人物预览</title>
+  <style>
+    :root { color-scheme: dark; font-family: "Microsoft YaHei", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #101820; color: #edfaff; }
+    .shell { width: min(92vw, 620px); padding: 28px; border: 1px solid #304854; background: #1a2830; }
+    h1 { margin: 0 0 8px; font-size: 22px; font-weight: 600; }
+    .sub { margin: 0 0 22px; color: #9eb6c1; font-size: 14px; }
+    .stage { display: grid; place-items: center; padding: 24px; background: #070b0e; border: 1px solid #2a404b; }
+    canvas { width: 320px; height: 400px; image-rendering: pixelated; border: 8px solid #34434a; box-shadow: 0 0 0 2px #06090b; }
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    button { border: 1px solid #4d6874; background: #243842; color: #effaff; padding: 9px 13px; cursor: pointer; font: inherit; }
+    button:hover, button.active { background: #1f8a96; border-color: #73e7e8; }
+    .hint { margin: 15px 0 0; color: #9fb4bf; font-size: 13px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <h1>小岚 1.8 英寸屏幕人物预览</h1>
+    <p class="sub">使用你提供的透明人物图，模拟 128×160 TFT 显示效果</p>
+    <div class="stage"><canvas id="screen" width="128" height="160"></canvas></div>
+    <div class="controls" aria-label="界面状态">
+      <button data-mode="idle">待机</button>
+      <button data-mode="recording">录音</button>
+      <button data-mode="thinking">思考</button>
+      <button data-mode="reply">回复</button>
+      <button id="auto">自动播放</button>
+    </div>
+    <p class="hint">待机显示闭嘴图；录音和电脑播放回复时轮播三种口型；思考状态显示闭嘴图和等待文字。</p>
+  </main>
+  <script>
+    const canvas = document.getElementById("screen");
+    const ctx = canvas.getContext("2d");
+    const buttons = [...document.querySelectorAll("[data-mode]")];
+    const images = {};
+    const sources = { closed: "闭嘴.png", small: "微张.png", open: "张嘴.png" };
+    let mode = "idle";
+    let frame = 0;
+    let auto = false;
+    let autoTimer;
+    const modes = ["idle", "recording", "thinking", "reply"];
+
+    for (const [key, src] of Object.entries(sources)) {
+      const image = new Image(); image.src = src; images[key] = image;
+    }
+    function text(value, x, y, size = 8, color = "#f4fbff", align = "left") {
+      ctx.font = `${size}px Microsoft YaHei, sans-serif`;
+      ctx.fillStyle = color; ctx.textAlign = align; ctx.fillText(value, x, y);
+    }
+    function bars(y, active) {
+      for (let i = 0; i < 10; i++) {
+        const x = 5 + i * 12;
+        ctx.fillStyle = i < active ? (i > 6 ? "#f49b50" : "#45d5a4") : "#24343b";
+        ctx.fillRect(x, y, 9, 8);
+      }
+    }
+    function mouthFrame() {
+      // 每个口型约停留 300ms，避免小屏幕上切换过快。
+      const phase = Math.floor(frame / 18) % 8;
+      return phase < 2 ? images.closed : phase < 5 ? images.small : images.open;
+    }
+    function person(image, y = 24, height = 108) {
+      if (!image.complete || !image.naturalWidth) return;
+      const ratio = image.naturalWidth / image.naturalHeight;
+      const h = height, w = h * ratio;
+      ctx.drawImage(image, (128 - w) / 2, y, w, h);
+    }
+    function frameScreen() {
+      ctx.fillStyle = "#071116"; ctx.fillRect(0, 0, 128, 160);
+      ctx.strokeStyle = "#2b5962"; ctx.beginPath(); ctx.moveTo(4, 18); ctx.lineTo(124, 18); ctx.stroke();
+      text("小岚", 5, 13, 9, mode === "recording" ? "#f49b50" : "#60e4e7");
+      if (mode === "idle") {
+        person(images.closed, 22, 111);
+        text("待机中 · 按键说话", 64, 143, 7, "#45d5a4", "center");
+      } else if (mode === "recording") {
+        person(mouthFrame(), 20, 112);
+        bars(137, 2 + Math.floor((Math.sin(frame / 2) + 1) * 4));
+        text("正在听", 64, 153, 7, "#f49b50", "center");
+      } else if (mode === "thinking") {
+        person(images.closed, 22, 111);
+        text("正在思考" + ".".repeat(frame % 4), 64, 143, 7, "#60e4e7", "center");
+      } else {
+        person(mouthFrame(), 20, 112);
+        text("小岚正在回复", 64, 143, 7, "#60e4e7", "center");
+      }
+      buttons.forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
+    }
+    function tick() { frame++; frameScreen(); requestAnimationFrame(tick); }
+    buttons.forEach(b => b.addEventListener("click", () => { mode = b.dataset.mode; auto = false; clearInterval(autoTimer); document.getElementById("auto").classList.remove("active"); }));
+    document.getElementById("auto").addEventListener("click", () => {
+      auto = !auto; document.getElementById("auto").classList.toggle("active", auto);
+      if (auto) { let i = modes.indexOf(mode); autoTimer = setInterval(() => { mode = modes[(++i) % modes.length]; }, 2600); }
+      else clearInterval(autoTimer);
+    });
+    tick();
+  </script>
+</body>
+</html>
